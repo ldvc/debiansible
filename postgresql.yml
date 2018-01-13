@@ -1,0 +1,22 @@
+---
+- name: Install and set up postgresql
+  hosts: servers
+  remote_user: root
+
+  tasks:
+    - block:
+        - name: Ensure postgresql is installed
+          apt:
+            name: "{{ item }}"
+            state: present
+          with_items:
+            - postgresql
+            - postgresql-doc
+      rescue:
+        - name: Revert postgresql install
+          apt: 
+            name: "{{ item }}"
+            state: absent 
+          with_items:
+            - postgresql
+            - postgresql-doc
