@@ -1,0 +1,70 @@
+# vi: ft=yaml
+---
+- name: Create new vhosts on existing env
+  hosts: servers
+  remote_user: root
+  vars_files:
+    - ./vars_global.yml
+
+  tasks:
+    - name: debug dictionary
+      debug: msg="{{ vhosts[item] }}"
+      with_items: "{{ vhosts | list }}"
+
+    - name: NGINX | Configure vhosts using template
+      template:
+        src: ./vhost.j2
+        dest: /etc/nginx/sites-available/{{ item }}
+        owner: root
+        group: root
+        mode: 0644
+        force: no
+      with_items: "{{ vhosts | list }}"
+
+    - name: NGINX | Create www directories
+      file:
+        path: /var/www/{{ vhosts[item].domain }}/{{ vhosts[item].folder }}
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: 0755
+      with_items: "{{ vhosts | list }}"
+
+    - name: NGINX | Add generic config
+      copy:
+        src: nginx-generic-config/
+        dest: /etc/nginx/snippets/
+
+    - name: NGINX | Create log directories
+      file:
+        path: /var/log/nginx/{{ vhosts[item].domain }}
+        state: directory
+        owner: root
+        group: adm
+        mode: 0755
+      with_items: "{{ vhosts | list }}"
+
+    - name: NGINX | Enable vhosts
+      file:
+        state: link
+        src: /etc/nginx/sites-available/{{ item }}
+        dest: /etc/nginx/sites-enabled/{{ item }}
+      with_items: "{{ vhosts | list }}"
+
+    - name: LECM | Config file
+      template:
+        src: ./lecm.j2
+        dest: /etc/lecm.conf
+        owner: root
+        group: root
+        mode: 0640
+        backup: yes
+      with_items: "{{ vhosts | list }}"
+
+    - name: LECM | Install package
+      apt:
+        update_cache: yes
+        state: latest
+        name: "{{item}}"
+      with_items:
+      - lecm

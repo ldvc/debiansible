@@ -1,0 +1,16 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "False"
+---
+path: /etc/letsencrypt
+service_name: nginx
+emailAddress: admin@example.com
+
+certificates:
+{% for i, v in vhosts.items() %}
+  {{i}}:
+  {% if 'alt_name' in v %}
+    subjectAltName:
+  {% for a in v['alt_name'] %}
+      - {{ a }}
+  {% endfor %}
+  {% endif %}
+  {% endfor %}

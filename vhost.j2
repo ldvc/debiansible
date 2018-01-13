@@ -1,0 +1,57 @@
+server {
+  listen 80;
+  listen [::]:80;
+  server_name {{ item }} {% if 'alt_name' in vhosts[item] %}{{ vhosts[item].alt_name | join(' ') }}{% endif %};
+
+  root /var/www/{{ vhosts[item].domain }}/{{ vhosts[item].folder }};
+  index index.php index.html;
+
+  location ^~ /.well-known/acme-challenge/ {
+    alias /etc/letsencrypt/challenges/{{ item }}/;
+    try_files $uri =404;
+  }
+
+  include snippets/security.conf;
+
+  #location / {
+  #  return 301 https://{{ item }}$request_uri;
+  #}
+
+  location ~ \.php$ {
+    include snippets/fastcgi-php.conf;
+    fastcgi_pass unix:/run/php/php7.0-fpm.sock;
+  }
+
+  access_log /var/log/nginx/{{ vhosts[item].domain }}/{{ vhosts[item].host }}.access.log;
+  error_log /var/log/nginx/{{ vhosts[item].domain }}/{{ vhosts[item].host }}.error.log;
+
+  # DEBUG ONLY
+  #rewrite_log on;
+  #error_log /var/log/nginx/{{ vhosts[item].domain }}/{{ vhosts[item].host }}.error.log debug;
+}
+
+server {
+  listen 443 ssl http2;
+  listen [::]:443 ssl http2;
+  server_name {{ item }} {% if 'alt_name' in vhosts[item] %}{{ vhosts[item].alt_name | join(' ') }}{% endif %};
+
+  root /var/www/{{ vhosts[item].domain }}/{{ vhosts[item].folder }};
+  index index.php index.html;
+
+  # ssl part
+  include ssl.conf;
+  ssl_certificate_key /etc/letsencrypt/private/{{ item }}.key;
+  ssl_certificate /etc/letsencrypt/pem/{{ item }}.pem;
+
+  ## fetch OCSP records from URL in ssl_certificate and cache them
+  #ssl_stapling on;
+  #ssl_stapling_verify on;
+
+  location ~ \.php$ {
+    include snippets/fastcgi-php.conf;
+    fastcgi_pass unix:/run/php/php7.0-fpm.sock;
+  }
+
+  access_log /var/log/nginx/{{ vhosts[item].domain }}/{{ vhosts[item].host }}.access.log;
+  error_log /var/log/nginx/{{ vhosts[item].domain }}/{{ vhosts[item].host }}.error.log;
+}
