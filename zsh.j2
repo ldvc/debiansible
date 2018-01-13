@@ -1,0 +1,31 @@
+# DESCRIPTION:
+#   A simple zsh configuration that gives you 90% of the useful features that I use everyday.
+#
+# AUTHOR:
+#   Geoffrey Grosenbach http://peepcode.com
+HISTFILE=~/.histfile
+HISTSIZE=1000
+SAVEHIST=1000
+
+bindkey -e
+
+# Colors
+autoload -U colors
+colors
+setopt prompt_subst
+
+# Prompt
+
+PROMPT='$USER@$HOST:%~ $ %{$reset_color%}'
+
+# Show completion on first TAB
+setopt menucomplete
+
+# Load completions for Ruby, Git, etc.
+autoload compinit
+compinit
+
+alias ll='ls -lh'
+alias bigf='du -hsx * | sort -rh | head -10'
+alias ltmux='if tmux has; then tmux attach; else tmux new; fi'
+alias nocom="egrep -v '^[[:space:]]*(#|$)'"

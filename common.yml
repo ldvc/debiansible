@@ -1,0 +1,95 @@
+---
+- hosts: servers
+  remote_user: root
+  strategy: debug
+  vars_files:
+    - ./vars_global.yml
+
+  tasks:
+  - name: install common packages for all servers
+    apt: 
+      update_cache=yes
+      state=latest
+      name={{item}}
+    with_items: 
+    - curl
+    - htop
+    - ncdu
+    - pwgen
+    - strace
+    - sudo
+    - tar
+    - unzip
+    - vim
+    - wget
+    - whois
+    - screen
+    - fail2ban
+    - git
+    - molly-guard
+    - tmux
+    - zsh
+    - dnsutils
+    - lvm2
+    - ufw
+    - mlocate
+    - bsd-mailx
+
+  - name: Create ssh-users group
+    group:
+      name: ssh-users
+      state: present
+
+  - name: Create users
+    user:
+      name: "{{ item }}"
+      shell: /usr/bin/zsh
+      state: present
+      groups: ssh-users
+      append: yes
+    with_items: "{{ users }}"
+    when: item is defined
+
+  - name: Configure sudo permission
+    lineinfile:
+      dest: /etc/sudoers.d/{{ item }}
+      line: "{{ item }} ALL=(ALL) NOPASSWD: ALL"
+      create: yes
+      state: present
+    with_items: "{{ users }}"
+    when: item is defined
+    validate: '/usr/sbin/visudo -cf %s'
+
+  - name: Create zsh config file
+    template:
+      src: ./zsh.j2
+      dest: /home/{{ item }}/.zshrc
+      owner: "{{ item }}"
+      group: "{{ item }}"
+      mode: 0644
+    with_items: "{{ users }}"
+
+  - name: Create fail2ban local jail
+    template:
+      src: ./fail2ban.j2
+      dest: /etc/fail2ban/jail.d/jail-custom.local
+      owner: root
+      group: root
+      mode: 0644
+    notify:
+      - "reload fail2ban"
+
+  - name: Add FQDN in /etc/hosts (replacing sd-xxxx.dedibox.fr)
+    replace:
+      path: /etc/hosts
+      regexp: '^127\.0\.0\.1[\t]sd-\S*\s\S*$'
+      replace: "127.0.0.1\t{{ server.name }}.{{ server.domain }} {{ server.name }}"
+      backup: yes
+    with_items: "{{ server }}"
+
+  handlers:
+    - name: Reload fail2ban
+      systemd:
+        name: fail2ban
+        state: restarted
+      listen: "reload fail2ban"
