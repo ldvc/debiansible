@@ -1,0 +1,259 @@
+# based on this excellent guide:
+# https://www.c0ffee.net/blog/mail-server-guide
+---
+- name: Install and set up postfix
+  hosts: servers
+  remote_user: root
+  vars_files:
+    - ./vars_global.yml
+
+  tasks:
+    - block:
+        - name: Ensure postfix is installed
+          apt:
+            name: "{{ item }}"
+            state: present
+          with_items:
+            - postfix
+            - postfix-ldap
+            - dovecot-ldap
+            - dovecot-sieve
+            - dovecot-solr
+            - dovecot-managesieved
+            - dovecot-imapd
+            - dovecot-lmtpd
+      rescue:
+        - name: revert postfix install
+          apt: 
+            name: "{{ item }}"
+            state: absent 
+          with_items:
+            - postfix
+            - postfix-ldap
+            - dovecot-ldap
+            - dovecot-sieve
+            - dovecot-solr
+            - dovecot-managesieved
+            - dovecot-imapd
+            - dovecot-lmtpd
+
+    - name: DOVECOT | Create vmail group
+      group:
+        name: vmail
+        state: present
+        system: yes
+
+    - name: DOVECOT | Create vmail account
+      user:
+        name: vmail
+        comment: "Virtual Mail Handler"
+        group: vmail
+        system: yes
+        state: present
+        home: /var/mail/vhosts
+
+    - name: POSTFIX | Create local users directory
+      file:
+        path: /var/mail/local
+        state: directory
+        owner: root
+        group: mail
+        mode: 0775
+
+    - name: DOVECOT | Create virtual users folders
+      file:
+        path: "/var/mail/{{ item }}"
+        state: directory
+        owner: vmail
+        group: vmail
+        mode: 0770
+      with_items:
+        - vhosts
+        - attachments
+
+    - name: DOVECOT | Get newly created user uid
+      shell: /usr/bin/id -u vmail
+      register: vmail_uid
+
+    - name: DOVECOT | Get newly created user gid
+      shell: /usr/bin/id -g vmail
+      register: vmail_gid
+
+      #- name: debug dictionary
+      #- debug: msg="{{ vmail_uid }}"
+
+    - name: DOVECOT | Set first virtual user binding
+      replace:
+        path: /etc/dovecot/conf.d/10-mail.conf
+        regexp: '^#first_valid_uid = 500$'
+        replace: "first_valid_uid = {{ vmail_uid.stdout }}"
+        backup: yes
+
+    - name: DOVECOT | Set last user
+      replace:
+        path: /etc/dovecot/conf.d/10-mail.conf
+        regexp: '^#last_valid_uid = 0$'
+        replace: "last_valid_uid = {{ vmail_uid.stdout }}"
+        backup: yes
+
+    - name: DOVECOT | Configure cache size
+      replace:
+        path: /etc/dovecot/conf.d/10-auth.conf
+        regexp: '^#auth_cache_size = 0$'
+        replace: "auth_cache_size = 10M"
+        backup: yes
+
+    - name: DOVECOT | Configure time for cache
+      replace:
+        path: /etc/dovecot/conf.d/10-auth.conf
+        regexp: '^#auth_cache_ttl = 1 hour$'
+        replace: "auth_cache_ttl = 1 hour"
+        backup: yes
+
+    - name: DOVECOT | Configure time for negative cache
+      replace:
+        path: /etc/dovecot/conf.d/10-auth.conf
+        regexp: '^#auth_cache_negative_ttl = 1 hour$'
+        replace: "auth_cache_negative_ttl = 1 hour"
+        backup: yes
+
+    - name: DOVECOT | Disable local auth
+      replace:
+        path: /etc/dovecot/conf.d/10-auth.conf
+        regexp: '^!include auth-system.conf.ext$'
+        replace: "#!include auth-system.conf.ext"
+        backup: yes
+
+    - name: DOVECOT | Enable LDAP auth
+      replace:
+        path: /etc/dovecot/conf.d/10-auth.conf
+        regexp: '^#!include auth-ldap.conf.ext$'
+        replace: "!include auth-ldap.conf.ext"
+        backup: yes
+
+    - name: DOVECOT | Set static homedir
+      replace:
+        path: /etc/dovecot/conf.d/auth-ldap.conf.ext
+        regexp: '^userdb\s{\n\s+driver\s=\sldap\n\s+args.*ext$'
+        replace: "userdb {\n  driver = static\n  args = uid=vmail gid=vmail home=/var/mail/vhosts/%d/%n"
+        backup: yes
+
+    - name: DOVECOT | Configure LDAP query
+      template:
+        src: ./mail/dovecot-ldap.conf.ext.j2
+        dest: /etc/dovecot/dovecot-ldap.conf.ext
+        owner: root
+        group: root
+        mode: 0600
+
+    - name: DOVECOT | Mailboxes config
+      template:
+        src: ./mail/10-mail.conf.j2
+        dest: /etc/dovecot/conf.d/10-mail.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: DOVECOT | Global config
+      template:
+        src: ./mail/10-master.conf.j2
+        dest: /etc/dovecot/conf.d/10-master.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: DOVECOT | LDA config
+      template:
+        src: ./mail/15-lda.conf.j2
+        dest: /etc/dovecot/conf.d/15-lda.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: DOVECOT | IMAP config
+      template:
+        src: ./mail/20-imap.conf.j2
+        dest: /etc/dovecot/conf.d/20-imap.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: DOVECOT | TLS config
+      template:
+        src: ./mail/10-ssl.conf.j2
+        dest: /etc/dovecot/conf.d/10-ssl.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: DOVECOT | mailboxes config
+      template:
+        src: ./mail/15-mailboxes.conf.j2
+        dest: /etc/dovecot/conf.d/15-mailboxes.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: DOVECOT | LMTP config
+      template:
+        src: ./mail/20-lmtp.conf.j2
+        dest: /etc/dovecot/conf.d/20-lmtp.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: DOVECOT | managesieve config
+      template:
+        src: ./mail/20-managesieve.conf.j2
+        dest: /etc/dovecot/conf.d/20-managesieve.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: DOVECOT | sieve config
+      template:
+        src: ./mail/90-sieve.conf.j2
+        dest: /etc/dovecot/conf.d/90-sieve.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: POSTFIX | Customize default master.cf file
+      template:
+        src: ./mail/postfix_master.j2
+        dest: /etc/postfix/master.cf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: POSTFIX | Customize default main.cf file
+      template:
+        src: ./mail/postfix_main.j2
+        dest: /etc/postfix/main.cf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Add query for domains binding (LDAP)
+      template:
+        src: ./mail/ldap-virtual-mailbox-domains.j2
+        dest: /etc/postfix/ldap-virtual-mailbox-domains.cf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Add query for mailboxes binding (LDAP)
+      template:
+        src: ./mail/ldap-virtual-mailbox-maps.j2
+        dest: /etc/postfix/ldap-virtual-mailbox-maps.cf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Add query for aliases binding (LDAP)
+      template:
+        src: ./mail/ldap-virtual-alias-maps.j2
+        dest: /etc/postfix/ldap-virtual-alias-maps.cf
+        owner: root
+        group: root
+        mode: 0644

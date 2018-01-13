@@ -1,0 +1,11 @@
+hosts = localhost
+auth_bind = no
+ldap_version = 3
+base = ou=users,dc={{ server.domain.split('.')[0] }},dc={{ server.domain.split('.')[1] }}
+deref = never
+scope = subtree
+user_attrs =
+user_filter = (&(objectclass=inetOrgPerson)(uid=%n)
+pass_attrs = mail=user,userPassword=password
+pass_filter = (&(objectclass=inetOrgPerson)(uid=%n))
+default_pass_scheme = CRYPT

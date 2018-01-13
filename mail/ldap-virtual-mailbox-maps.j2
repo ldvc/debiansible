@@ -1,0 +1,6 @@
+server_host = ldap://127.0.0.1/
+search_base = ou=users,dc={{ server.domain.split('.')[0] }},dc={{ server.domain.split('.')[1] }}
+version = 3
+bind = no
+query_filter = (&(objectclass=inetLocalMailRecipient)(mail=%s))
+result_attribute = mail

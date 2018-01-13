@@ -1,0 +1,14 @@
+protocols = $protocols sieve
+
+# uncomment if you want remote managesieve functionality - unfortunately
+# almost no mail clients support it :(
+#
+# service managesieve-login {
+#   inet_listener sieve_deprecated {
+#     port = 0
+#   }
+# 
+#   service_count = 0
+#   process_min_avail = 3
+#   vsz_limit = 1G
+# }
