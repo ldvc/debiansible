@@ -1,0 +1,28 @@
+---
+allow_in:
+  - {port: 22, proto: 'tcp'}
+  - {port: 25, proto: 'tcp'}
+  - {port: 53, proto: 'udp'}
+  - {port: 53, proto: 'tcp'}
+  - {port: 80, proto: 'tcp'}
+  - {port: 443, proto: 'tcp'}
+  - {port: 546, proto: 'udp'}
+  - {port: 587, proto: 'tcp'}
+  - {port: 993, proto: 'tcp'}
+  - {port: 5222, proto: 'tcp'}
+  - {port: 5223, proto: 'tcp'}
+  - {port: 5269, proto: 'tcp'}
+  - {port: 5280, proto: 'tcp'}
+  - {port: 5281, proto: 'tcp'}
+
+allow_out:
+  - {port: 22, proto: 'tcp'}
+  - {port: 25, proto: 'tcp'}
+  - {port: 53, proto: 'udp'}
+  - {port: 53, proto: 'tcp'}
+  - {port: 123, proto: 'udp'}
+  - {port: 547, proto: 'udp'}
+  - {port: 587, proto: 'udp'}
+  - {port: 4222, proto: 'tcp'}
+  - {port: 5222, proto: 'tcp'}
+  - {port: 5269, proto: 'tcp'}

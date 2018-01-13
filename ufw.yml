@@ -1,0 +1,26 @@
+---
+- hosts: servers
+  remote_user: root
+  strategy: debug
+  vars_files:
+    - ./vars_ufw.yml
+
+  tasks:
+  - name: Allow incoming traffic
+    ufw:
+      rule: allow
+      port: "{{ item.port }}"
+      proto: "{{ item.proto }}"
+      direction: in
+    with_items: "{{ allow_in }}"
+
+  - name: Allow outgoing traffic
+    ufw:
+      rule: allow
+      port: "{{ item.port }}"
+      proto: "{{ item.proto }}"
+      direction: out
+    with_items: "{{ allow_out }}"
+
+  - name: Set firewall default policy
+    ufw: state=enabled policy=deny
