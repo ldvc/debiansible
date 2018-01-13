@@ -1,0 +1,66 @@
+---
+users:
+  - john
+
+server:
+    name: server1
+    domain: example.com
+
+packages:
+  - htop
+  - git
+  - dnsutils
+  - molly-guard
+  - tmux
+  - zsh
+  - fail2ban
+
+vhosts:
+  server1.example.com:
+    domain: example.com
+    host: server1
+    folder: server1
+    alt_name:
+      - h.example.com
+      - mail.example.com
+    admin: webmaster@example.com
+    debug: false
+  lab.example.net:
+    domain: example.net
+    host: lab
+    folder: lab
+    admin: webmaster@example.net
+  mail.example.org:
+    domain: example.org
+    host: mail
+    folder: mail
+    admin: admin@example.org
+  xmpp.example.org:
+    domain: example.org
+    host: xmpp
+    folder: xmpp
+    alt_name:
+      - example.org
+      - upload.example.org
+      - conference.example.org
+      - pubsub.example.org
+      - proxy.example.org
+      - jabber.example.org
+    admin: admin@example.org
+    debug: false
+  nuage.example.net:
+    domain: example.net
+    host: nuage
+    folder: nuage
+    admin: admin@example.net
+
+xmpp:
+  domain: example.org
+  admin: john@example.org
+  muc: conference.example.org
+
+prosody_dhparam_length: 2048
+prosody_external_modules_dir: /usr/lib/prosody/modules/
+
+gitea:
+  - {user: 'git'}
